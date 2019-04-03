@@ -46,8 +46,9 @@ String WebSocketClient::generateKey() {
 }
 
 bool WebSocketClient::connect(String host, String path, int port) {
-	this->client->connect(host.c_str(), port);
+	bool isConnected = this->client->connect(host.c_str(), port);
 
+if (isConnected) {
 	// send handshake
 	String handshake = "GET " + path + " HTTP/1.1\r\n"
 			"Host: " + host + "\r\n"
@@ -117,6 +118,9 @@ bool WebSocketClient::connect(String host, String path, int port) {
 	}
 
 	return success;
+}
+DEBUG_WS("[WS] could not connect");
+return false;
 }
 
 bool WebSocketClient::isConnected() {
