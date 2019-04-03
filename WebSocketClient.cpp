@@ -46,67 +46,66 @@ String WebSocketClient::generateKey() {
 }
 
 bool WebSocketClient::connect(String host, String path, int port) {
-// success criteria
+	this->client->connect(host.c_str(), port);
+
+	// send handshake
+	String handshake = "GET " + path + " HTTP/1.1\r\n"
+			"Host: " + host + "\r\n"
+			"Connection: Upgrade\r\n"
+			"Upgrade: websocket\r\n"
+			"Sec-WebSocket-Version: 13\r\n"
+			"Sec-WebSocket-Key: " + generateKey() + "=\r\n";
+
+	if (authorizationHeader != "")
+		handshake += "Authorization: " + authorizationHeader + "\r\n";
+
+	handshake += "\r\n";
+
+	DEBUG_WS("[WS] sending handshake");
+	DEBUG_WS(handshake);
+
+	client->write(handshake.c_str());
+
+	// success criteria
 	bool hasCorrectStatus = false;
 	bool isUpgrade = false;
 	bool isWebsocket = false;
 	bool hasAcceptedKey = false;
-	bool isConnected = this->client->connect(host.c_str(), port);
 
-	if (isConnected) {
-		// send handshake
-		String handshake = "GET " + path + " HTTP/1.1\r\n"
-				"Host: " + host + "\r\n"
-				"Connection: Upgrade\r\n"
-				"Upgrade: websocket\r\n"
-				"Sec-WebSocket-Version: 13\r\n"
-				"Sec-WebSocket-Key: " + generateKey() + "=\r\n";
+	bool endOfResponse = false;
 
-		if (authorizationHeader != "")
-			handshake += "Authorization: " + authorizationHeader + "\r\n";
-
-		handshake += "\r\n";
-
-		DEBUG_WS("[WS] sending handshake");
-		DEBUG_WS(handshake);
-
-		client->write(handshake.c_str());
-
-		bool endOfResponse = false;
-
-		// handle response headers
-		String s;
-		while (!endOfResponse && (s = client->readStringUntil('\n')).length() > 0) {
-			DEBUG_WS("[WS][RX] " + s);
-			// HTTP Status
-			if (s.indexOf("HTTP/") != -1) {
-				auto status = s.substring(9, 12);
-				if (status == "101")
-					hasCorrectStatus = true;
-				else {
-					DEBUG_WS("[WS] wrong status: " + status);
-					return false;
-				}
+	// handle response headers
+	String s;
+	while (!endOfResponse && (s = client->readStringUntil('\n')).length() > 0) {
+		DEBUG_WS("[WS][RX] " + s);
+		// HTTP Status
+		if (s.indexOf("HTTP/") != -1) {
+			auto status = s.substring(9, 12);
+			if (status == "101")
+				hasCorrectStatus = true;
+			else {
+				DEBUG_WS("[WS] wrong status: " + status);
+				return false;
 			}
-			// Headers
-			else if (s.indexOf(":") != -1) {
-				auto col = s.indexOf(":");
-				auto key = s.substring(0, col);
-				auto value = s.substring(col + 2, s.length() - 1);
-
-				if (key == "Connection" && (value == "Upgrade" || value == "upgrade"))
-					isUpgrade = true;
-
-				else if (key == "Sec-WebSocket-Accept")
-					hasAcceptedKey = true;
-
-				else if (key == "Upgrade" && value == "websocket")
-					isWebsocket = true;
-			}
-
-			else if (s == "\r")
-				endOfResponse = true;
 		}
+		// Headers
+		else if (s.indexOf(":") != -1) {
+			auto col = s.indexOf(":");
+			auto key = s.substring(0, col);
+			auto value = s.substring(col + 2, s.length() - 1);
+
+			if (key == "Connection" && (value == "Upgrade" || value == "upgrade"))
+				isUpgrade = true;
+
+			else if (key == "Sec-WebSocket-Accept")
+				hasAcceptedKey = true;
+
+			else if (key == "Upgrade" && value == "websocket")
+				isWebsocket = true;
+		}
+
+		else if (s == "\r")
+			endOfResponse = true;
 	}
 
 	bool success = hasCorrectStatus && isUpgrade && isWebsocket && hasAcceptedKey;
