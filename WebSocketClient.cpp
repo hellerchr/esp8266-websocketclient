@@ -11,7 +11,7 @@
 #define WS_SIZE16         126
 
 #ifdef DEBUG
-#define DEBUG_WS(MSG) Serial.println(MSG)
+#define DEBUG_WS Serial.println
 #else
 #define DEBUG_WS(MSG)
 #endif
@@ -44,11 +44,20 @@ String WebSocketClient::generateKey() {
 	}
 	return key;
 }
+void WebSocketClient::write(uint8_t data) {
+    if (client->connected())
+        client->write(data);
+}
+
+void WebSocketClient::write(const char *data) {
+    if (client->connected())
+        client->write(data);
+}
 
 bool WebSocketClient::connect(String host, String path, int port) {
-	bool isConnected = this->client->connect(host.c_str(), port);
+    if (!client->connect(host.c_str(), port))
+        return false;
 
-if (isConnected) {
 	// send handshake
 	String handshake = "GET " + path + " HTTP/1.1\r\n"
 			"Host: " + host + "\r\n"
@@ -65,7 +74,7 @@ if (isConnected) {
 	DEBUG_WS("[WS] sending handshake");
 	DEBUG_WS(handshake);
 
-	client->write(handshake.c_str());
+    write(handshake.c_str());
 
 	// success criteria
 	bool hasCorrectStatus = false;
@@ -111,24 +120,25 @@ if (isConnected) {
 
 	bool success = hasCorrectStatus && isUpgrade && isWebsocket && hasAcceptedKey;
 
-	if (success)
+	if (success) {
 		DEBUG_WS("[WS] sucessfully connected");
+        this->websocketEstablished = true;
+    }
 	else {
 		DEBUG_WS("[WS] could not connect");
+        this->disconnect();
 	}
 
 	return success;
 }
-DEBUG_WS("[WS] could not connect");
-return false;
-}
 
 bool WebSocketClient::isConnected() {
-	return client->connected();
+	return this->websocketEstablished && client->connected();
 }
 
 void WebSocketClient::disconnect() {
 	client->stop();
+    this->websocketEstablished = false;
 }
 
 void WebSocketClient::send(const String& str) {
@@ -139,16 +149,16 @@ void WebSocketClient::send(const String& str) {
 	}
 
 	// 1. send fin and type text
-	client->write(WS_FIN | WS_OPCODE_TEXT);
+	write(WS_FIN | WS_OPCODE_TEXT);
 
 	// 2. send length
 	int size = str.length();
 	if (size > 125) {
-		client->write(WS_MASK | WS_SIZE16);
-		client->write((uint8_t) (size >> 8));
-		client->write((uint8_t) (size & 0xFF));
+		write(WS_MASK | WS_SIZE16);
+		write((uint8_t) (size >> 8));
+		write((uint8_t) (size & 0xFF));
 	} else {
-		client->write(WS_MASK | (uint8_t) size);
+		write(WS_MASK | (uint8_t) size);
 	}
 
 	// 3. send mask
@@ -158,14 +168,14 @@ void WebSocketClient::send(const String& str) {
 	mask[2] = random(0, 256);
 	mask[3] = random(0, 256);
 
-	client->write(mask[0]);
-	client->write(mask[1]);
-	client->write(mask[2]);
-	client->write(mask[3]);
+	write(mask[0]);
+	write(mask[1]);
+	write(mask[2]);
+	write(mask[3]);
 
 	//4. send masked data
 	for (int i = 0; i < size; ++i) {
-		client->write(str[i] ^ mask[i % 4]);
+		write(str[i] ^ mask[i % 4]);
 	}
 }
 
@@ -219,4 +229,6 @@ bool WebSocketClient::getMessage(String& message) {
 			message += (char) timedRead();
 		}
 	}
+    
+    return true;
 }
