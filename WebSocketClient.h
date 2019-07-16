@@ -25,11 +25,17 @@ public:
 private:
 	int timedRead();
 
+    void write(uint8_t data);
+    
+    void write(const char *str);
+
 	String generateKey();
 
 	WiFiClient *client;
 
 	String authorizationHeader = "";
+
+    bool websocketEstablished = false;
 
 };
 
