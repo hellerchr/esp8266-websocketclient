@@ -17,10 +17,13 @@
 #endif
 
 WebSocketClient::WebSocketClient(bool secure) {
-  if (secure)
-    this->client = new WiFiClientSecure;
-  else
+  if (secure) {
+    WiFiClientSecure *client = new WiFiClientSecure();
+    client->setInsecure(); // TODO: Improve security settings
+    this->client = client;
+  } else {
     this->client = new WiFiClient;
+  }
 }
 
 WebSocketClient::~WebSocketClient() { delete this->client; }
@@ -53,8 +56,10 @@ void WebSocketClient::write(const char *data) {
 }
 
 bool WebSocketClient::connect(String host, String path, int port) {
-  if (!client->connect(host.c_str(), port))
+  if (!client->connect(host.c_str(), port)) {
+    DEBUG_WS("[WS] TCP connection failed");
     return false;
+  }
 
   // send handshake
   String handshake = "GET " + path +
@@ -109,7 +114,7 @@ bool WebSocketClient::connect(String host, String path, int port) {
       if (key == "Connection" && (value == "Upgrade" || value == "upgrade"))
         isUpgrade = true;
 
-      else if (key == "Sec-WebSocket-Accept")
+      else if (key == "Sec-WebSocket-Accept" || key == "Sec-Websocket-Accept")
         hasAcceptedKey = true;
 
       else if (key == "Upgrade" && value == "websocket")
