@@ -5,38 +5,36 @@
 
 class WebSocketClient {
 public:
+  WebSocketClient(bool secure = false);
 
-	WebSocketClient(bool secure = false);
+  ~WebSocketClient();
 
-	~WebSocketClient();
+  bool connect(String host, String path, int port);
 
-	bool connect(String host, String path, int port);
+  bool isConnected();
 
-	bool isConnected();
+  void disconnect();
 
-	void disconnect();
+  void send(const String &str);
 
-	void send(const String& str);
+  bool getMessage(String &message);
 
-	bool getMessage(String& message);
-
-	void setAuthorizationHeader(String header);
+  void setAuthorizationHeader(String header);
 
 private:
-	int timedRead();
+  int timedRead();
 
-    void write(uint8_t data);
-    
-    void write(const char *str);
+  void write(uint8_t data);
 
-	String generateKey();
+  void write(const char *str);
 
-	WiFiClient *client;
+  String generateKey();
 
-	String authorizationHeader = "";
+  WiFiClient *client;
 
-    bool websocketEstablished = false;
+  String authorizationHeader = "";
 
+  bool websocketEstablished = false;
 };
 
-#endif //WEBSOCKETCLIENT_H
+#endif // WEBSOCKETCLIENT_H
