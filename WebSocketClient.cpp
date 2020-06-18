@@ -33,14 +33,14 @@ void WebSocketClient::setAuthorizationHeader(String header) {
 
 String WebSocketClient::generateKey() {
 	String key = "";
-	for (int i = 0; i < 23; ++i) {
+	for (int i = 0; i < 22; ++i) {
 		int r = random(0, 3);
 		if (r == 0)
-			key += (char) random(48, 58);
+			key += (char) random(48, 57);
 		else if (r == 1)
-			key += (char) random(65, 91);
+			key += (char) random(65, 90);
 		else if (r == 2)
-			key += (char) random(97, 128);
+			key += (char) random(97, 122);
 	}
 	return key;
 }
@@ -64,7 +64,7 @@ bool WebSocketClient::connect(String host, String path, int port) {
 			"Connection: Upgrade\r\n"
 			"Upgrade: websocket\r\n"
 			"Sec-WebSocket-Version: 13\r\n"
-			"Sec-WebSocket-Key: " + generateKey() + "=\r\n";
+			"Sec-WebSocket-Key: " + generateKey() + "==\r\n";
 
 	if (authorizationHeader != "")
 		handshake += "Authorization: " + authorizationHeader + "\r\n";
